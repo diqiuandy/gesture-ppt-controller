@@ -1,57 +1,58 @@
-import cv2, yaml, time, pyautogui, mediapipe as mp
-from model_wrapper import load_model
+import mediapipe as mp
+import cv2, pyautogui, time
 
-CFG = yaml.safe_load(open('config.yaml'))
+#  Model initialization 
+BaseOptions = mp.tasks.BaseOptions
+GestureRecognizer = mp.tasks.vision.GestureRecognizer
+GestureRecognizerOptions = mp.tasks.vision.GestureRecognizerOptions
+VisionRunningMode = mp.tasks.vision.RunningMode
 
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(
-    static_image_mode=False,
-    max_num_hands=1,
-    min_detection_confidence=0.75,
-    min_tracking_confidence=0.6,
+model_path = "models/gesture_recognizer.task"
+
+# Playback utility
+KEY_MAP = {
+    "Thumb_Up":      "left",   # Previous page
+    "Thumb_Down":    "right",  # Next page
+    "Victory":       "esc",    # exit the slideshow
+    "Open_Palm":     "f5",     # Play the slides
+    "Closed_Fist":   "b",      # Blackout/un-blackout
+    "Pointing_Up":   "m",      # Mute/Unmute
+}
+
+# Gesture callback
+last_time = 0
+def callback(result, output, timestamp):
+    global last_time
+    if not result.gestures: 
+        return
+    category = result.gestures[0][0].category_name
+    if category not in KEY_MAP or KEY_MAP[category] is None:
+        return
+    now = time.time()
+    if now - last_time >= 1.2:         
+        pyautogui.press(KEY_MAP[category])
+        print(f"Detected: {category} → press {KEY_MAP[category]}")
+        last_time = now
+
+# Create recognizer
+options = GestureRecognizerOptions(
+    base_options=BaseOptions(model_asset_path=model_path),
+    running_mode=VisionRunningMode.LIVE_STREAM,
+    result_callback=callback,
 )
-mp_draw = mp.solutions.drawing_utils
+recognizer = GestureRecognizer.create_from_options(options)
 
-model = load_model(CFG)
-
-last_trigger = 0
-v_counter = 0
-frame_confirm = CFG['frame_confirm']
-debounce_sec = CFG['debounce_sec']
-
+# Webcam main loop
 cap = cv2.VideoCapture(0)
-if not cap.isOpened():
-    raise RuntimeError('Camera not found')
-print('Running… press q to quit')
-
-while True:
-    ok, frame = cap.read()
-    if not ok:
+while cap.isOpened():
+    ret, frame = cap.read()
+    if not ret:
         break
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    res = hands.process(rgb)
+    mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+    recognizer.recognize_async(mp_img, int(time.time()*1000))
 
-    if res.multi_hand_landmarks:
-        lm = res.multi_hand_landmarks[0]
-        mp_draw.draw_landmarks(frame, lm, mp_hands.HAND_CONNECTIONS)
-
-        gesture = model.predict(lm.landmark)
-        if gesture == 'V_SIGN':
-            v_counter += 1
-            if v_counter >= frame_confirm:
-                now = time.time()
-                if now - last_trigger >= debounce_sec:
-                    pyautogui.press(CFG['key_bindings']['V_SIGN'])
-                    last_trigger = now
-                v_counter = 0
-        else:
-            v_counter = 0
-    else:
-        v_counter = 0
-
-    cv2.putText(frame, f'V: {v_counter}/{frame_confirm}', (10,30),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.8, tuple(CFG['hud']['text']), 2)
-    cv2.imshow('Gesture Controller', frame)
+    cv2.imshow("Gesture Control", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 

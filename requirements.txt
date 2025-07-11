@@ -1,6 +1,6 @@
-# Once your venv is active, run:
-#   pip install -r requirements.txt
-opencv-python
-mediapipe
-pyautogui
-pyyaml
+# requirements.txt
+opencv-python==4.12.0.88    # For video capture and display
+mediapipe==0.10.9           # For hand gesture recognition using MediaPipe Tasks API
+pyautogui==0.9.54           # For simulating keyboard key presses
+pyyaml==6.0                 # For reading config.yaml (if used)
+numpy==1.26.4               # Compatible with mediapipe 0.10.x and TensorFlow 2.15
