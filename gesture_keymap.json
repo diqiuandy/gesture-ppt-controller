@@ -1,0 +1,11 @@
+{
+  "keymap": {
+    "Thumb_Up": "left",
+    "Thumb_Down": "right",
+    "Victory": "esc",
+    "Open_Palm": "f5",
+    "Closed_Fist": "b",
+    "Pointing_Up": "m"
+  },
+  "debounce": 1.2
+}

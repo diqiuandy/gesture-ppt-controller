@@ -1,0 +1,5 @@
+mediapipe==0.10.9
+opencv-python
+pyautogui==0.9.54
+PyQt5>=5.15
+pyyaml==6.0         
